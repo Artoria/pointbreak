@@ -62,6 +62,7 @@ window.Game = function(){
     var r = 10
     var rv = Math.floor(Math.random() * 10) + r + 10
     if(rv % 2 != 0) ++rv;
+    r = rv-1;
     var col = self.random_color();
     var p = self.circle_func(Math.random() * 600 + 200, Math.random() * 600, r, col)
     return [p, r, rv, col]
@@ -90,6 +91,14 @@ window.Game = function(){
   }
 
   this.update = function(){
+     
+     if(!self.lasttime) self.lasttime = new Date().getTime();
+     else {
+       var t = self.lasttime;
+       var u = new Date().getTime();
+       if(u - t < 100) return;
+       self.lasttime = u;
+     }
      if(self.ulock) return;
      if(self.ulock) return;
      self.ulock = true;
