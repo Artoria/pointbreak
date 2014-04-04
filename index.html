@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src='paper.js'> </script>
+<script type="text/javascript">
+
+window.Config = function(){
+   return {
+     'score': {
+         position: [200, 74], 
+         text: "0",
+      },
+     'score_bar': {
+         position: [200, 50], 
+         text: "Score",
+      },
+     'time_bar': {
+         position: [1080, 50], 
+         text: "Time",
+      },
+     'time': {
+         position: [1080, 74], 
+         text: 60,
+      },
+
+   }
+};
+
+window.Game = function(){
+  var self = this;
+  this.maketext = function(fn){
+    ["score", "score_bar", "time", "time_bar"].forEach(function(f){
+       self[f] = fn(self.config[f])
+    })
+  }
+  
+  this.makerect = function(fn){
+    self.rect_func = fn;
+  }  
+
+  this.makecircle = function(fn){
+    self.circle_func = fn;
+  }
+
+  this.state = 'pending_start'
+  this.fire = function(t, e){ self[self.state](t, e); }
+  this.np = 20
+
+
+  this.points = []
+
+  var dist = {'red':60, 'blue':20, 'green':40}
+  
+  this.random_color = function(){
+     var x = Math.random() * 100;
+     if(x < 40) return 'red';
+     if(x < 60) return 'blue';
+     return 'green';
+  }
+
+  this.newpoint = function(){
+    var r = 10
+    var rv = Math.floor(Math.random() * 10) + r + 10
+    if(rv % 2 != 0) ++rv;
+    var col = self.random_color();
+    var p = self.circle_func(Math.random() * 600 + 200, Math.random() * 600, r, col)
+    return [p, r, rv, col]
+  }
+
+  this.start_rect = function(x, y){
+    self.remove_rect();
+    self.lt   = [x, y]
+    self.rb   = [-1, -1]
+    self.rect = self.rect_func(x, y, x+1, y+1);
+  }
+
+
+
+  this.remove_rect   = function(){
+    if(self.rect && self.rect["remove"]){
+      self.rect.remove();
+      self.rect = undefined;
+    }
+  }
+
+  this.continue_rect = function(x, y){
+    self.remove_rect();
+    self.rb = [x, y]
+    self.rect = self.rect_func(self.lt[0], self.lt[1], x, y);
+  }
+
+  this.update = function(){
+     if(self.ulock) return;
+     if(self.ulock) return;
+     self.ulock = true;
+     self.update_time();
+     self.update_score();
+     self.update_points();
+     self.harvest();
+     self.ulock = false;
+  }
+
+  this.update_points = function(){
+     self.points.forEach(function(v, i){
+        if(v[1] % 2 == 0){
+          v[1] += 2
+          if(v[1] > v[2]){
+            v[1] = v[2] + 1;
+          }
+        } else {
+          v[1] -= 2
+        }
+
+        if(v[1] < 1){
+          self.points[i][0].remove();
+          self.points[i] = self.newpoint();
+        }else{
+          self.points[i][0].scaling = v[1] / 10;
+        }
+     })
+  
+  }
+
+  this.update_score = function(){
+     if(self.targetscore){
+       var i = self.score_score 
+       if(i < self.targetscore){
+         i += Math.floor((self.targetscore - i) / 10) + 20
+         if(i > self.targetscore){
+           i = self.targetscore
+         }
+
+       }
+      if(i > self.targetscore){
+         i += Math.floor((self.targetscore - i) / 10) + 20
+         if(i < self.targetscore){
+           i = self.targetscore
+         }
+
+       }
+       self.score_score = self.targetscore
+     }
+     self.score.content = self.score_score.toString();
+  }
+
+  this.pending_start = function(t, e){
+    if(t == "mousedown"){
+      self.start_rect(e.point.x, e.point.y);
+      self.state = 'start'
+      self.targetscore = 0
+      self.score_score = 0
+      for(i=0; i<self.np; ++i){
+        self.points.push(self.newpoint())
+      }
+      self.inittime = new Date().getTime();
+    }
+  }
+
+  this.update_time = function(){
+      var t     = self.inittime;     
+      var delta = Math.ceil((60000 - (new Date().getTime() - t)) / 1000)
+      self.time.content = delta.toString();
+      if(delta <= 0){
+         self.time.content = 'over';        
+         self.state = 'over';
+      }
+  }
+
+  this.start = function(t, e){
+    if(t == "mousedown"){
+      self.start_rect(e.point.x, e.point.y);
+      self.state = 'dragging';
+      return;
+    }
+    if(t == "idle"){
+      self.update();
+      return;
+    }
+  }
+
+  this.harvest = function(){
+     if(!self.judge) return;
+     var x1 = self.judge[0], 
+         y1 = self.judge[1], 
+         x2 = self.judge[2],
+         y2 = self.judge[3]
+     if(x1 > x2){var t = x1; x1 = x2; x2 = t;}
+     if(y1 > y2){var t = y1; y1 = y2; y2 = t;}
+     self.judge = false;
+     var cnt = {red: 0, blue: 0, green: 0};
+        self.points.forEach(function(v, i){
+          var x = v[0].position.x, y = v[0].position.y;
+          if( x >= x1 && x <= x2
+          &&  y >= y1 && y <= y2){
+             ++cnt[v[3]]
+             self.points[i][0].remove();
+             self.points[i] = self.newpoint();
+          }
+        } 
+       )
+
+     var score = cnt['red']
+
+     score -= cnt['blue']
+     if(score < 0) score = 0;
+      self.score_score = self.targetscore
+      self.targetscore = self.score_score + Math.floor(score)
+      for(i = cnt['green']; i > 0; --i){
+        self.targetscore /= 2
+      }
+      self.targetscore = Math.floor(self.targetscore)
+  }
+
+  this.dragging = function(t, e){
+    if(t == "idle"){
+      self.update();
+      return;
+    }
+
+    if(t == "mousemove"){
+      self.continue_rect(e.point.x, e.point.y);
+      return;
+    }
+
+    if(t == "mouseup"){
+      self.judge = [self.lt[0], self.lt[1], self.rb[0], self.rb[1]];
+      self.remove_rect();
+      self.state = 'start';
+      return;
+    }
+  }  
+}
+
+</script>
+<script type='text/paperscript' canvas='canvas-1'>
+var game = new window.Game();
+game.config = new window.Config();
+
+game.maketext(function(x){
+  var text = new PointText(new Point(x.position[0], x.position[1]))
+  text.justification = 'center'
+  text.fontFamily = "Arial"
+  text.fontSize = 24
+  text.fillColor = 'black'
+  text.content = x.text
+  return text;
+})
+
+game.makerect(function(x1, y1, x2, y2){
+  var t = new Path.Rectangle(new Point(x1, y1), new Point(x2, y2));
+  t.strokeColor = 'red';
+  return t;
+})
+
+game.makecircle(function(x, y, r, c){
+  var t = new Path.Circle(new Point(x, y), r);
+  t.strokeColor = c;
+  return t;
+})
+
+game.remove_item= function(p){
+  p.remove();
+}
+
+function onMouseDown(e){
+  game.fire('mousedown', e);
+}
+
+function onMouseUp(e){
+  game.fire('mouseup', e);
+}
+
+function onFrame(){
+  game.fire('idle', {});
+}
+
+function onMouseMove(e){
+  game.fire('mousemove', e);
+}
+
+
+</script>
+
+</head>  
+<body>
+
+<style>
+h4{
+ font-family:Arial;
+ size:24;
+}
+</style>
+<center><h4>Use your mouse to draw rectangles, click any where to start.</h2></center>
+<center><h4>Capture red circles as many as possible, each red gives 1 point</h2></center>
+<center><h4>Avoid blue circles, each blue gives -1 point</h2></center>
+<center><h4>Avoid green circles, each green halves your point </h2></center>
+</table>
+
+<div class="canvas">
+<canvas resize="true" id="canvas-1" ></canvas>
+</div>
+
+</body>
