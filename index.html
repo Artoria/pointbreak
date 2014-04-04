@@ -60,7 +60,7 @@ window.Game = function(){
 
   this.newpoint = function(){
     var r = 10
-    var rv = Math.floor(Math.random() * 10) + r + 10
+    var rv = Math.floor(Math.random() * 10) + r 
     if(rv % 2 != 0) ++rv;
     r = rv-1;
     var col = self.random_color();
@@ -111,14 +111,8 @@ window.Game = function(){
 
   this.update_points = function(){
      self.points.forEach(function(v, i){
-        if(v[1] % 2 == 0){
-          v[1] += 2
-          if(v[1] > v[2]){
-            v[1] = v[2] + 1;
-          }
-        } else {
-          v[1] -= 2
-        }
+        v[1] -= 1
+        
 
         if(v[1] < 1){
           self.points[i][0].remove();
